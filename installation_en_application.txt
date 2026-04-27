@@ -1,0 +1,6 @@
+Le serveur web doit être accessible en https.
+Le fichier html contienr le code, index.html est plus professionnel qu'un autre nom.
+
+Fichier manifest.json :
+
+Fichier service-worker.js :

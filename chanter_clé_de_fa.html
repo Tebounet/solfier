@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Coach Vocal & Piano - Tonalités et Armures</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/cjs/vexflow.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        #controls { background: white; padding: 20px; border-bottom: 2px solid #ddd; width: 100%; box-sizing: border-box; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; align-items: center; }
+        #container { background: white; margin-top: 30px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        #feedback { font-size: 28px; font-weight: bold; margin-top: 20px; height: 40px; color: #555; text-align: center; }
+        .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; color: white; }
+        .btn-start { background: #28a745; }
+        .btn-stop { background: #dc3545; }
+        input[type="number"], select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; }
+        label { font-size: 14px; color: #666; font-weight: bold; }
+        .param-item { display: flex; flex-direction: column; gap: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <div class="param-item">
+        <label>Tonalité :</label>
+        <select id="keySig" onchange="resetAndDraw()">
+            <option value="C">Do Majeur (vide)</option>
+            <option value="G">Sol Majeur (1#)</option>
+            <option value="D">Ré Majeur (2#)</option>
+            <option value="A">La Majeur (3#)</option>
+            <option value="F">Fa Majeur (1b)</option>
+            <option value="Bb">Si b Majeur (2b)</option>
+            <option value="Eb">Mi b Majeur (3b)</option>
+        </select>
+    </div>
+    <div class="param-item">
+        <label>Grave (Clé Fa) :</label>
+        <input type="number" id="bassDown" value="2" min="0" max="8">
+    </div>
+    <div class="param-item">
+        <label>Aigu (Clé Fa) :</label>
+        <input type="number" id="bassUp" value="2" min="0" max="8">
+    </div>
+    <button class="btn btn-start" onclick="start()">DÉMARRER</button>
+    <button class="btn btn-stop" onclick="stop()">STOP</button>
+</div>
+
+<div id="feedback">Cliquez sur Démarrer</div>
+<div id="container"></div>
+
+<script>
+const VF = Vex.Flow;
+let renderer, context, svg, audioContext, analyser;
+let running = false;
+let isTransitioning = false;
+let currentTargetNote = ""; // Note brute (ex: f/3)
+let realPitchTarget = "";   // Note avec altération de gamme (ex: F#)
+
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const scale = ["c/1","d/1","e/1","f/1","g/1","a/1","b/1","c/2","d/2","e/2","f/2","g/2","a/2","b/2","c/3","d/3","e/3","f/3","g/3","a/3","b/3","c/4","d/4","e/4","f/4","g/4","a/4","b/4","c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"];
+
+// Dictionnaire des altérations par tonalité
+const KEY_ALTERATIONS = {
+    "C": {},
+    "G": { "F": "F#" },
+    "D": { "F": "F#", "C": "C#" },
+    "A": { "F": "F#", "C": "C#", "G": "G#" },
+    "F": { "B": "A#" }, // VexFlow utilise souvent A# pour Bb en détection simple, ou Bb
+    "Bb": { "B": "A#", "E": "D#" },
+    "Eb": { "B": "A#", "E": "D#", "A": "G#" }
+};
+
+// --- INITIALISATION DU RENDU ---
+function initVisual() {
+    const container = document.getElementById("container");
+    container.innerHTML = "";
+    renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+    renderer.resize(450, 250);
+    context = renderer.getContext();
+}
+
+function drawNote() {
+    if (!context) return;
+    context.clear();
+
+    const tonality = document.getElementById("keySig").value;
+    const stave = new VF.Stave(50, 60, 350);
+    stave.addClef("bass").addKeySignature(tonality).setContext(context).draw();
+
+    // Calcul des limites
+    const baseMin = "g/2";
+    const baseMax = "c/4";
+    const minIdx = Math.max(0, scale.indexOf(baseMin) - +document.getElementById('bassDown').value);
+    const maxIdx = Math.min(scale.length - 1, scale.indexOf(baseMax) + +document.getElementById('bassUp').value);
+    
+    const randomIdx = Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
+    currentTargetNote = scale[randomIdx];
+
+    // Calcul de la cible réelle pour le micro
+    const noteLetter = currentTargetNote.split("/")[0].toUpperCase();
+    realPitchTarget = KEY_ALTERATIONS[tonality][noteLetter] || noteLetter;
+
+    const note = new VF.StaveNote({
+        clef: "bass",
+        keys: [currentTargetNote],
+        duration: "q"
+    });
+
+    VF.Formatter.FormatAndDraw(context, stave, [note]);
+}
+
+function resetAndDraw() {
+    if (running) drawNote();
+}
+
+// --- LOGIQUE DE PROGRESSION ---
+function passerALaNoteSuivante() {
+    if (isTransitioning) return;
+    isTransitioning = true;
+
+    setTimeout(() => {
+        if (running) {
+            drawNote();
+            document.getElementById("feedback").style.color = "#555";
+            document.getElementById("feedback").innerText = "À vous...";
+        }
+        isTransitioning = false;
+    }, 1500);
+}
+
+// --- ANALYSE AUDIO ---
+async function setupAudio() {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const microphone = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    microphone.connect(analyser);
+}
+
+function autoCorrelate(buf, sampleRate) {
+    let SIZE = buf.length;
+    let rms = 0;
+    for (let i=0; i<SIZE; i++) { let val = buf[i]; rms += val*val; }
+    if (Math.sqrt(rms/SIZE) < 0.01) return -1;
+
+    let r1=0, r2=SIZE-1, thres=0.2;
+    for (let i=0; i<SIZE/2; i++) if (Math.abs(buf[i])<thres) { r1=i; break; }
+    for (let i=1; i<SIZE/2; i++) if (Math.abs(buf[SIZE-i])<thres) { r2=SIZE-i; break; }
+    buf = buf.slice(r1,r2);
+    SIZE = buf.length;
+
+    let c = new Float32Array(SIZE);
+    for (let i=0; i<SIZE; i++)
+        for (let j=0; j<SIZE-i; j++)
+            c[i] = c[i] + buf[j]*buf[j+i];
+
+    let d=0; while (c[d]>c[d+1]) d++;
+    let maxval=-1, maxpos=-1;
+    for (let i=d; i<SIZE; i++) {
+        if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+    }
+    return sampleRate/maxpos;
+}
+
+function update() {
+    if (running && analyser && !isTransitioning) {
+        const buffer = new Float32Array(analyser.fftSize);
+        analyser.getFloatTimeDomainData(buffer);
+        const pitch = autoCorrelate(buffer, audioContext.sampleRate);
+        
+        const feedbackEl = document.getElementById("feedback");
+        if (pitch !== -1) {
+            const midi = 12 * Math.log2(pitch / 440) + 69;
+            const noteName = NOTE_NAMES[Math.round(midi) % 12];
+            
+            // On compare avec realPitchTarget (qui prend en compte l'armure)
+            if (noteName === realPitchTarget.replace("b", "#")) { // Normalisation simple
+                feedbackEl.innerText = "✅ " + noteName + " : BRAVO !";
+                feedbackEl.style.color = "green";
+                passerALaNoteSuivante();
+            } else {
+                feedbackEl.innerText = "🎤 " + noteName + " (Visez le " + realPitchTarget + ")";
+                feedbackEl.style.color = "#d35400";
+            }
+        }
+    }
+    requestAnimationFrame(update);
+}
+
+// --- COMMANDES ---
+window.start = async function() {
+    if (running) return;
+    try {
+        if (!audioContext) await setupAudio();
+        if (audioContext.state === 'suspended') await audioContext.resume();
+        
+        running = true;
+        initVisual();
+        drawNote();
+        update();
+        document.getElementById("feedback").innerText = "C'est parti !";
+    } catch (err) {
+        document.getElementById("feedback").innerText = "Erreur micro : " + err.message;
+    }
+};
+
+window.stop = function() {
+    running = false;
+    document.getElementById("feedback").innerText = "Session arrêtée.";
+    document.getElementById("feedback").style.color = "#555";
+};
+
+initVisual();
+</script>
+
+</body>
+</html>

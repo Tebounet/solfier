@@ -1,6 +1,77 @@
-Le serveur web doit être accessible en https.
-Le fichier html contienr le code, index.html est plus professionnel qu'un autre nom.
+Le serveur web doit être accessible en https. Malgré tout, le site https://choraleknds.42web.io/ a un comportement
+qui bloque l'installation et ne permet qu'un simple raccourci sur l'écran d'accueil du téléphone. C'est pourquoi
+j'utilise les GitHub Pages.
 
-Fichier manifest.json :
+Ma GitHub Page : https://github.com/Tebounet/solfier 
+Le dépôt du code : https://github.com/Tebounet/solfier.git
+L'url de l'application : https://tebounet.github.io/solfier/ ; c'est cette url qui donne accès à l'application
 
-Fichier service-worker.js :
+Le fichier html contient le code, index.html est plus professionnel qu'un autre nom.
+Fichier manifest.json .
+Fichier service-worker.js .
+Fichier vexflow.js : en local plutôt que sur internet, pour permettre de travailler hors réseau
+
+Je suis dans un fenêtre de commande cmd, dans le répertoire où j'ai les fichiers de mon application. J'ai un compte github. Quells commandes git dois-je exécuter ?
+
+Pour héberger votre application sur GitHub Pages (ce qui règlera définitivement vos problèmes de HTTPS et d'installation sur le Pixel 7A), voici la marche à suivre étape par étape depuis votre fenêtre de commande.
+
+1. Préparation sur GitHub
+Connectez-vous à votre compte GitHub.
+
+Créez un nouveau dépôt (New repository).
+
+Nommez-le par exemple solfege.
+
+Laissez-le en Public.
+
+Ne cochez aucune case (ni README, ni .gitignore).
+
+Cliquez sur Create repository.
+
+Copiez l'URL de votre dépôt (elle ressemble à https://github.com/votre-pseudo/solfege.git).
+
+2. Commandes Git à exécuter (dans votre CMD)
+Tapez ces commandes l'une après l'autre :
+
+DOS
+:: Initialise le dossier comme un dépôt Git
+git init
+
+:: Ajoute tous vos fichiers (index.html, manifest, icons, etc.)
+git add .
+
+:: Crée votre premier point de sauvegarde
+git commit -m "Premiere version PWA"
+
+:: Renomme la branche principale en 'main'
+git branch -M main
+
+:: Relie votre dossier local à votre compte GitHub
+:: (Remplacez l'URL par celle que vous avez copiée à l'étape 1)
+git remote add origin https://github.com/votre-pseudo/solfege.git
+
+:: Envoie vos fichiers sur GitHub
+git push -u origin main
+3. Activer l'application (GitHub Pages)
+Une fois les commandes terminées :
+
+Retournez sur la page de votre dépôt sur GitHub.
+
+Allez dans l'onglet Settings (en haut à droite).
+
+Dans le menu à gauche, cliquez sur Pages.
+
+Sous "Build and deployment", vérifiez que "Branch" est sur main et le dossier sur /(root).
+
+Cliquez sur Save.
+
+ASTUCE :
+--------
+Pour ne pas avoir de message de warning sur la conversion des fins de lignes
+	git config --global core.autocrlf true
+
+APRES UNE MISE A JOUR DU CODE :
+-------------------------------
+	git add .
+	git commit -m "rapatriement en local du fichier vexflow.js"
+	git push origin main

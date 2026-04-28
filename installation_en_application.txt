@@ -10,6 +10,7 @@ Le fichier html contient le code, index.html est plus professionnel qu'un autre 
 Fichier manifest.json .
 Fichier service-worker.js .
 Fichier vexflow.js : en local plutôt que sur internet, pour permettre de travailler hors réseau
+Fuchier .htaccess : force à rester en https (c'était un essai pour héberger sur https://choraleknds.42web.io/ )
 
 Je suis dans un fenêtre de commande cmd, dans le répertoire où j'ai les fichiers de mon application. J'ai un compte github. Quells commandes git dois-je exécuter ?
 

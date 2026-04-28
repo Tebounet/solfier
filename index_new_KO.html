@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chanter les notes - Solfège</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="vexflow.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        #controls { background: white; padding: 15px; border-bottom: 2px solid #ddd; width: 100%; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+        #container { background: white; margin-top: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 10px; }
+        #feedback { font-size: 24px; font-weight: bold; margin-top: 15px; height: 40px; color: #555; text-align: center; }
+        .btn { padding: 10px 18px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; color: white; transition: 0.3s; }
+        .btn-start { background: #28a745; }
+        .btn-start:hover { background: #218838; }
+        label { font-size: 14px; font-weight: bold; color: #444; }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <button class="btn btn-start" onclick="start()">DÉMARRER</button>
+    <div>
+        <label>Clé :</label><br>
+        <select id="clefSel">
+            <option value="treble">Clé de Sol</option>
+            <option value="bass">Clé de Fa</option>
+        </select>
+    </div>
+</div>
+
+<div id="feedback">Cliquez sur Démarrer</div>
+<div id="container"></div>
+
+<script>
+// 1. Configuration des noms en Français
+const NOTE_NAMES = ["Do", "Do#", "Ré", "Ré#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
+
+// 2. Traducteur pour l'enharmonie (Anglais -> Français)
+const translateToFr = {
+    "C": "Do", "C#": "Do#", "Db": "Do#",
+    "D": "Ré", "D#": "Ré#", "Eb": "Ré#",
+    "E": "Mi",
+    "F": "Fa", "F#": "Fa#", "Gb": "Fa#",
+    "G": "Sol", "G#": "Sol#", "Ab": "Sol#",
+    "A": "La", "A#": "La#", "Bb": "La#",
+    "B": "Si"
+};
+
+const KEY_ALTERATIONS = {
+    "treble": ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5","G5","A5"],
+    "bass": ["E2","F2","G2","A2","B2","C3","D3","E3","F3","G3","A3"]
+};
+
+let audioContext, analyser, dataArray, source;
+let running = false, isTransitioning = false;
+let realPitchTarget = "";
+
+function initVisual() {
+    document.getElementById("container").innerHTML = "";
+}
+
+function drawNote() {
+    const clef = document.getElementById("clefSel").value;
+    const notes = KEY_ALTERATIONS[clef];
+    realPitchTarget = notes[Math.floor(Math.random() * notes.length)];
+    
+    initVisual();
+    const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
+    const div = document.getElementById("container");
+    const renderer = new Renderer(div, Renderer.Backends.SVG);
+    renderer.resize(300, 200);
+    const context = renderer.getContext();
+    const stave = new Stave(10, 40, 280);
+    stave.addClef(clef).setContext(context).draw();
+
+    const [noteName, octave] = [realPitchTarget.slice(0, -1), realPitchTarget.slice(-1)];
+    const note = new StaveNote({ clef: clef, keys: [noteName + "/" + octave], duration: "q" });
+    if (noteName.includes("#")) note.addModifier(new Vex.Flow.Accidental("#"));
+    if (noteName.includes("b")) note.addModifier(new Vex.Flow.Accidental("b"));
+
+    const voice = new Voice({ num_beats: 1, beat_value: 4 });
+    voice.addTickables([note]);
+    new Formatter().joinVoices([voice]).format([voice], 200);
+    voice.draw(context, stave);
+}
+
+async function setupAudio() {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+    dataArray = new Float32Array(analyser.fftSize);
+}
+
+function autoCorrelate(buf, sampleRate) {
+    let SIZE = buf.length;
+    let rms = 0;
+    for (let i=0; i<SIZE; i++) rms += buf[i]*buf[i];
+    if (Math.sqrt(rms/SIZE) < 0.01) return -1;
+    let r1=0, r2=SIZE-1, thres=0.2;
+    for (let i=0; i<SIZE/2; i++) if (Math.abs(buf[i])<thres) { r1=i; break; }
+    for (let i=1; i<SIZE/2; i++) if (Math.abs(buf[SIZE-i])<thres) { r2=SIZE-i; break; }
+    buf = buf.slice(r1,r2);
+    SIZE = buf.length;
+    let c = new Float32Array(SIZE);
+    for (let i=0; i<SIZE; i++) for (let j=0; j<SIZE-i; j++) c[i] += buf[j]*buf[j+i];
+    let d=0; while (c[d]>c[d+1]) d++;
+    let maxval=-1, maxpos=-1;
+    for (let i=d; i<SIZE; i++) if (c[i]>maxval) { maxval=c[i]; maxpos=i; }
+    return sampleRate/maxpos;
+}
+
+function update() {
+    if (!running) return;
+    if (!isTransitioning) {
+        analyser.getFloatTimeDomainData(dataArray);
+        const pitch = autoCorrelate(dataArray, audioContext.sampleRate);
+        const feedbackEl = document.getElementById("feedback");
+
+        if (pitch !== -1) {
+            const midi = 12 * Math.log2(pitch / 440) + 69;
+            const noteIndex = Math.round(midi) % 12;
+            const currentNoteFr = NOTE_NAMES[noteIndex]; // Note chantée en FR
+
+            // Extraction du nom de la cible (ex: "C4" -> "C" ou "Db4" -> "Db")
+            const targetEnglishBase = realPitchTarget.replace(/[0-9]/g, '');
+            const targetNoteFr = translateToFr[targetEnglishBase]; // Cible en FR
+
+            if (currentNoteFr === targetNoteFr) {
+                feedbackEl.innerText = "✅ " + currentNoteFr + " : BRAVO !";
+                feedbackEl.style.color = "green";
+                isTransitioning = true;
+                setTimeout(() => { 
+                    drawNote(); 
+                    isTransitioning = false; 
+                    feedbackEl.innerText = "À vous..."; 
+                    feedbackEl.style.color = "#555"; 
+                }, 1200);
+            } else {
+                feedbackEl.innerText = "🎤 " + currentNoteFr + " (Cherchez : " + targetNoteFr + ")";
+                feedbackEl.style.color = "#d35400";
+            }
+        }
+    }
+    requestAnimationFrame(update);
+}
+
+window.start = async function() {
+    try {
+        if (!audioContext) await setupAudio();
+        if (audioContext.state === 'suspended') await audioContext.resume();
+        running = true; 
+        initVisual(); 
+        drawNote(); 
+        update();
+        document.getElementById("feedback").innerText = "Chantez la note...";
+    } catch (err) { 
+        document.getElementById("feedback").innerText = "Erreur micro : " + err; 
+    }
+}
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js');
+    });
+  }
+</script>
+</body>
+</html>

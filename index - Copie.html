@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Coach Musical - Clé de Sol & Fa</title>
-    <script src="vexflow.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/cjs/vexflow.js"></script> -->
+	<script src="vexflow.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; }
         #controls { background: white; padding: 15px; border-bottom: 2px solid #ddd; width: 100%; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
@@ -61,18 +62,8 @@ let currentTargetNote = "";
 let realPitchTarget = "";
 
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+<!-- const NOTE_NAMES = ["Do", "Do#", "Ré", "Ré#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"]; -->
 const scale = ["c/1","d/1","e/1","f/1","g/1","a/1","b/1","c/2","d/2","e/2","f/2","g/2","a/2","b/2","c/3","d/3","e/3","f/3","g/3","a/3","b/3","c/4","d/4","e/4","f/4","g/4","a/4","b/4","c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"];
-
-// Traducteur pour l'affichage en Français (utilisé à la volée)
-const toFrench = {
-    "C": "Do", "C#": "Do#", "Db": "Do#",
-    "D": "Ré", "D#": "Ré#", "Eb": "Ré#",
-    "E": "Mi",
-    "F": "Fa", "F#": "Fa#", "Gb": "Fa#",
-    "G": "Sol", "G#": "Sol#", "Ab": "Sol#",
-    "A": "La", "A#": "La#", "Bb": "La#",
-    "B": "Si"
-};
 
 const KEY_ALTERATIONS = {
     "C": {}, "G": { "F": "F#" }, "D": { "F": "F#", "C": "C#" },
@@ -146,29 +137,17 @@ function update() {
         analyser.getFloatTimeDomainData(buffer);
         const pitch = autoCorrelate(buffer, audioContext.sampleRate);
         const feedbackEl = document.getElementById("feedback");
-        
         if (pitch !== -1) {
             const midi = 12 * Math.log2(pitch / 440) + 69;
-            const noteNameEN = NOTE_NAMES[Math.round(midi) % 12];
-            const targetNormEN = realPitchTarget.replace("b", "#");
-            
-            // Traduction instantanée pour l'affichage de l'utilisateur
-            const noteNameFR = toFrench[noteNameEN] || noteNameEN;
-            const targetNormFR = toFrench[realPitchTarget] || realPitchTarget;
-
-            // Comparaison technique (gère le cas général et l'équivalence La#/Sib)
-            if (noteNameEN === targetNormEN || (noteNameEN === "A#" && targetNormEN === "Bb")) {
-                feedbackEl.innerText = "✅ " + noteNameFR + " : BRAVO !";
+            const noteName = NOTE_NAMES[Math.round(midi) % 12];
+            const targetNorm = realPitchTarget.replace("b", "#");
+            if (noteName === targetNorm || (noteName === "A#" && targetNorm === "Bb")) {
+                feedbackEl.innerText = "✅ " + noteName + " : BRAVO !";
                 feedbackEl.style.color = "green";
                 isTransitioning = true;
-                setTimeout(() => { 
-                    drawNote(); 
-                    isTransitioning = false; 
-                    feedbackEl.innerText = "À vous..."; 
-                    feedbackEl.style.color = "#555"; 
-                }, 1200);
+                setTimeout(() => { drawNote(); isTransitioning = false; feedbackEl.innerText = "À vous..."; feedbackEl.style.color = "#555"; }, 1200);
             } else {
-                feedbackEl.innerText = "🎤 " + noteNameFR + " (Cherchez : " + targetNormFR + ")";
+                feedbackEl.innerText = "🎤 " + noteName + " (Cherchez : " + realPitchTarget + ")";
                 feedbackEl.style.color = "#d35400";
             }
         }

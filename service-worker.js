@@ -1,4 +1,4 @@
-const CACHE_NAME = "Solfier-v2"; // On change le nom pour forcer la mise à jour
+const CACHE_NAME = "Solfier"; // On change le nom pour forcer la mise à jour
 /* const FILES = [
   "./",
   "./index.html",

@@ -1,10 +1,18 @@
-Le serveur web doit être accessible en https. Malgré tout, le site https://choraleknds.42web.io/ a un comportement
-qui bloque l'installation et ne permet qu'un simple raccourci sur l'écran d'accueil du téléphone. C'est pourquoi
-j'utilise les GitHub Pages.
+Généralités :
+-------------
+On réalise ici une PWA (Progressive Web App).
+Pour faire simple, c'est un site internet conçu pour se comporter exactement
+comme une application mobile classique, mais sans avoir besoin de la télécharger
+depuis le Google Play Store ou l'App Store d'Apple.
+
+Cette application doit être hébergée sur un site accessible en https. Cependant, le serveur web
+https://choraleknds.42web.io/ a un comportement qui bloque l'installation et ne permet qu'un
+simple raccourci sur l'écran d'accueil du téléphone. C'est pourquoi j'utilise les GitHub Pages.
 
 Ma GitHub Page : https://github.com/Tebounet/solfier 
 Le dépôt du code : https://github.com/Tebounet/solfier.git
-L'url de l'application : https://tebounet.github.io/solfier/ ; c'est cette url qui donne accès à l'application
+L'url de l'application : https://tebounet.github.io/solfier/ ; c'est cette url qui donne accès
+à l'application et permet de l'installer.
 
 Le fichier html contient le code, index.html est plus professionnel qu'un autre nom.
 Fichier manifest.json .
@@ -76,3 +84,15 @@ APRES UNE MISE A JOUR DU CODE :
 	git add .
 	git commit -m "rapatriement en local du fichier vexflow.js"
 	git push origin main
+	
+INSTALLATION COMME APPLICATION :
+--------------------------------
+- ouvrir Google Chrome (sur smartphone ou PC), Safari sur IPhone 
+- aller à l'URL https://tebounet.github.io/solfier/
+- l'application est alors visible mais pas installée
+- dans le menu de Chrome (les trois petits points en haut ou bas de page), cliquer sur
+  "Ajouter à l'écran d'accueil" ; 2 choix sont alors possibles, cliquer sur "Installer"
+
+Remarque : l'application une fois installée s'appelle "Chanter les notes" (cela est déterminé
+		   par le fichier manifest.json) alors que sur smartphone son nom est "solfier" dans la
+		   liste des applications --> à unifier

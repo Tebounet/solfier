@@ -60,10 +60,13 @@ let isTransitioning = false;
 let currentTargetNote = "";
 let realPitchTarget = "";
 
+// Variable de contrôle pour la tenue de la note (compteur de trames stables)
+let correctNoteCounter = 0;
+const REQUIRED_STABLE_FRAMES = 25; // Nombre de analyses consécutives réussies (~0.5s)
+
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const scale = ["c/1","d/1","e/1","f/1","g/1","a/1","b/1","c/2","d/2","e/2","f/2","g/2","a/2","b/2","c/3","d/3","e/3","f/3","g/3","a/3","b/3","c/4","d/4","e/4","f/4","g/4","a/4","b/4","c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"];
 
-// Traducteur pour l'affichage en Français (utilisé à la volée)
 const toFrench = {
     "C": "Do", "C#": "Do#", "Db": "Do#",
     "D": "Ré", "D#": "Ré#", "Eb": "Ré#",
@@ -96,7 +99,6 @@ function drawNote() {
     const stave = new VF.Stave(50, 40, 300);
     stave.addClef(clef).addKeySignature(tonality).setContext(context).draw();
 
-    // Définition des zones par défaut
     const baseMin = (clef === "bass") ? "g/2" : "e/4";
     const baseMax = (clef === "bass") ? "c/4" : "g/5";
     
@@ -111,6 +113,9 @@ function drawNote() {
 
     const note = new VF.StaveNote({ clef: clef, keys: [currentTargetNote], duration: "q" });
     VF.Formatter.FormatAndDraw(context, stave, [note]);
+    
+    // On réinitialise le compteur à chaque nouvelle note dessinée
+    correctNoteCounter = 0;
 }
 
 function resetAndDraw() { if (running) drawNote(); }
@@ -127,7 +132,10 @@ async function setupAudio() {
 function autoCorrelate(buf, sampleRate) {
     let SIZE = buf.length; let rms = 0;
     for (let i=0; i<SIZE; i++) { let val = buf[i]; rms += val*val; }
-    if (Math.sqrt(rms/SIZE) < 0.01) return -1;
+    
+    // AJUSTEMENT SENSIBILITÉ : Passé de 0.01 à 0.045 pour filtrer les bruits de fond
+    if (Math.sqrt(rms/SIZE) < 0.045) return -1;
+    
     let r1=0, r2=SIZE-1, thres=0.2;
     for (let i=0; i<SIZE/2; i++) if (Math.abs(buf[i])<thres) { r1=i; break; }
     for (let i=1; i<SIZE/2; i++) if (Math.abs(buf[SIZE-i])<thres) { r2=SIZE-i; break; }
@@ -152,25 +160,41 @@ function update() {
             const noteNameEN = NOTE_NAMES[Math.round(midi) % 12];
             const targetNormEN = realPitchTarget.replace("b", "#");
             
-            // Traduction instantanée pour l'affichage de l'utilisateur
             const noteNameFR = toFrench[noteNameEN] || noteNameEN;
             const targetNormFR = toFrench[realPitchTarget] || realPitchTarget;
 
-            // Comparaison technique (gère le cas général et l'équivalence La#/Sib)
-            if (noteNameEN === targetNormEN || (noteNameEN === "A#" && targetNormEN === "Bb")) {
-                feedbackEl.innerText = "✅ " + noteNameFR + " : BRAVO !";
-                feedbackEl.style.color = "green";
-                isTransitioning = true;
-                setTimeout(() => { 
-                    drawNote(); 
-                    isTransitioning = false; 
-                    feedbackEl.innerText = "À vous..."; 
-                    feedbackEl.style.color = "#555"; 
-                }, 1200);
+            // Vérification de la justesse de la note
+            const isCorrect = (noteNameEN === targetNormEN || (noteNameEN === "A#" && targetNormEN === "Bb"));
+
+            if (isCorrect) {
+                correctNoteCounter++; // La note est bonne, on incrémente le compteur de tenue
+                
+                // Si la note est tenue depuis assez de trames, on valide !
+                if (correctNoteCounter >= REQUIRED_STABLE_FRAMES) {
+                    feedbackEl.innerText = "✅ " + noteNameFR + " : BRAVO !";
+                    feedbackEl.style.color = "green";
+                    isTransitioning = true;
+                    setTimeout(() => { 
+                        drawNote(); 
+                        isTransitioning = false; 
+                        feedbackEl.innerText = "À vous..."; 
+                        feedbackEl.style.color = "#555"; 
+                    }, 1200);
+                } else {
+                    // La note est bonne mais pas encore tenue assez longtemps : indicateur visuel de progression
+                    let progress = Math.round((correctNoteCounter / REQUIRED_STABLE_FRAMES) * 100);
+                    feedbackEl.innerText = "🎤 " + noteNameFR + " (Stabilisez... " + progress + "%)";
+                    feedbackEl.style.color = "#28a745";
+                }
             } else {
+                // Mauvaise note chantée : on réinitialise immédiatement le compteur de stabilité
+                correctNoteCounter = 0;
                 feedbackEl.innerText = "🎤 " + noteNameFR + " (Cherchez : " + targetNormFR + ")";
                 feedbackEl.style.color = "#d35400";
             }
+        } else {
+            // Silence ou son trop faible : on remet doucement le compteur à zéro (ou immédiatement)
+            correctNoteCounter = 0;
         }
     }
     requestAnimationFrame(update);
@@ -180,12 +204,12 @@ window.start = async function() {
     try {
         if (!audioContext) await setupAudio();
         if (audioContext.state === 'suspended') await audioContext.resume();
-        running = true; initVisual(); drawNote(); update();
+        running = true; correctNoteCounter = 0; initVisual(); drawNote(); update();
         document.getElementById("feedback").innerText = "C'est parti !";
     } catch (err) { document.getElementById("feedback").innerText = "Erreur micro : " + err.message; }
 };
 
-window.stop = function() { running = false; document.getElementById("feedback").innerText = "Arrêté."; };
+window.stop = function() { running = false; correctNoteCounter = 0; document.getElementById("feedback").innerText = "Arrêté."; };
 initVisual();
 </script>
 </body>

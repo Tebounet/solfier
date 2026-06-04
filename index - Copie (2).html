@@ -7,9 +7,7 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; }
         #controls { background: white; padding: 15px; border-bottom: 2px solid #ddd; width: 100%; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
-        
-        #container { background: white; margin-top: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 320px; height: 130px; display: flex; align-items: center; justify-content: center; }
-        
+        #container { background: white; margin-top: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         #feedback { font-size: 24px; font-weight: bold; margin-top: 15px; height: 35px; color: #555; }
         .btn { padding: 10px 18px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; color: white; }
         .btn-start { background: #28a745; }
@@ -30,12 +28,10 @@
 
 <div id="controls">
     <div class="param">
-        <label>PUPITRE :</label>
-        <select id="voiceSel" onchange="resetAndDraw()">
-            <option value="bass">Basse (Clé de Fa)</option>
-            <option value="tenor">Ténor (Clé de Sol)</option>
-            <option value="alto">Alto (Clé de Sol)</option>
-            <option value="soprano">Soprano (Clé de Sol)</option>
+        <label>CLÉ :</label>
+        <select id="clefSel" onchange="resetAndDraw()">
+            <option value="bass">Clé de Fa (Basse)</option>
+            <option value="treble">Clé de Sol (Piano/Haut)</option>
         </select>
     </div>
     <div class="param">
@@ -49,14 +45,12 @@
         </select>
     </div>
     <div class="param">
-        <label>NIVEAU PROGRESSIF :</label>
-        <select id="levelSel" onchange="resetAndDraw()">
-            <option value="1">Niveau 1 (5 notes)</option>
-            <option value="2">Niveau 2 (7 notes)</option>
-            <option value="3">Niveau 3 (9 notes)</option>
-            <option value="4">Niveau 4 (11 notes)</option>
-            <option value="5">Niveau 5 (2 octaves entières)</option>
-        </select>
+        <label>Extension Bas :</label>
+        <input type="number" id="extDown" value="1" min="0" max="7">
+    </div>
+    <div class="param">
+        <label>Extension Haut :</label>
+        <input type="number" id="extUp" value="1" min="0" max="7">
     </div>
     <button class="btn btn-start" onclick="start()">DÉMARRER</button>
     <button class="btn btn-stop" onclick="stop()">STOP</button>
@@ -83,7 +77,7 @@
 
 <script>
 const VF = Vex.Flow;
-let renderer, context, audioContext, analyser, localStream;
+let renderer, context, audioContext, analyser;
 let running = false;
 let isTransitioning = false;
 let currentTargetNote = "";
@@ -94,14 +88,6 @@ const REQUIRED_STABLE_FRAMES = 25;
 
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const scale = ["c/1","d/1","e/1","f/1","g/1","a/1","b/1","c/2","d/2","e/2","f/2","g/2","a/2","b/2","c/3","d/3","e/3","f/3","g/3","a/3","b/3","c/4","d/4","e/4","f/4","g/4","a/4","b/4","c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"];
-
-// Ténor recalibré une octave au-dessus (min: c/4, max: c/6, median: b/4)
-const VOICE_RANGES = {
-    bass:    { clef: "bass",    min: "e/2", max: "e/4", median: "d/3" }, 
-    tenor:   { clef: "treble",  min: "c/4", max: "c/6", median: "b/4" }, 
-    alto:    { clef: "treble",  min: "f/3", max: "f/5", median: "e/4" }, 
-    soprano: { clef: "treble",  min: "c/4", max: "c/6", median: "b/4" }  
-};
 
 const toFrench = {
     "C": "Do", "C#": "Do#", "Db": "Do#",
@@ -122,7 +108,7 @@ function initVisual() {
     const container = document.getElementById("container");
     container.innerHTML = "";
     renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(300, 120); 
+    renderer.resize(400, 220);
     context = renderer.getContext();
 }
 
@@ -130,25 +116,16 @@ function drawNote() {
     if (!context) return;
     context.clear();
 
-    const voice = document.getElementById("voiceSel").value;
+    const clef = document.getElementById("clefSel").value;
     const tonality = document.getElementById("keySig").value;
-    const level = parseInt(document.getElementById("levelSel").value, 10);
-    
-    const config = VOICE_RANGES[voice];
-    const stave = new VF.Stave(20, 10, 260); 
+    const stave = new VF.Stave(50, 40, 300);
+    stave.addClef(clef).addKeySignature(tonality).setContext(context).draw();
 
-    stave.addClef(config.clef).addKeySignature(tonality).setContext(context).draw();
-
-    const medianIdx = scale.indexOf(config.median);
-    const offset = 2 + (level - 1); 
+    const baseMin = (clef === "bass") ? "g/2" : "e/4";
+    const baseMax = (clef === "bass") ? "c/4" : "g/5";
     
-    let minIdx = medianIdx - offset;
-    let maxIdx = medianIdx + offset;
-    
-    const absoluteMinIdx = scale.indexOf(config.min);
-    const absoluteMaxIdx = scale.indexOf(config.max);
-    if (minIdx < absoluteMinIdx) minIdx = absoluteMinIdx;
-    if (maxIdx > absoluteMaxIdx) maxIdx = absoluteMaxIdx;
+    const minIdx = Math.max(0, scale.indexOf(baseMin) - +document.getElementById('extDown').value);
+    const maxIdx = Math.min(scale.length - 1, scale.indexOf(baseMax) + +document.getElementById('extUp').value);
     
     const randomIdx = Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
     currentTargetNote = scale[randomIdx];
@@ -156,7 +133,7 @@ function drawNote() {
     const noteLetter = currentTargetNote.split("/")[0].toUpperCase();
     realPitchTarget = KEY_ALTERATIONS[tonality][noteLetter] || noteLetter;
 
-    const note = new VF.StaveNote({ clef: config.clef, keys: [currentTargetNote], duration: "q" });
+    const note = new VF.StaveNote({ clef: clef, keys: [currentTargetNote], duration: "q" });
     VF.Formatter.FormatAndDraw(context, stave, [note]);
     
     correctNoteCounter = 0;
@@ -165,23 +142,18 @@ function drawNote() {
 function resetAndDraw() { if (running) drawNote(); }
 
 async function setupAudio() {
-    if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-    }
-    if (audioContext) {
-        await audioContext.close();
-    }
-
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const microphone = audioContext.createMediaStreamSource(localStream);
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const microphone = audioContext.createMediaStreamSource(stream);
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 2048;
     microphone.connect(analyser);
 }
 
+// Fonction pour jouer une note du clavier virtuel (onde sinusoïdale type diapason)
 function playNote(frequency) {
-    if (!audioContext || audioContext.state === 'closed') {
+    // Initialise l'AudioContext si l'utilisateur clique sur le clavier avant de démarrer le micro
+    if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
     if (audioContext.state === 'suspended') {
@@ -194,6 +166,7 @@ function playNote(frequency) {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(frequency, audioContext.currentTime);
     
+    // Volume et enveloppe pour éviter les clics audibles (petit fondu de sortie)
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 1.2);
     
@@ -269,34 +242,14 @@ function update() {
 
 window.start = async function() {
     try {
-        document.getElementById("feedback").innerText = "Connexion micro...";
-        await setupAudio();
-        if (audioContext.state === 'suspended') {
-            await audioContext.resume();
-        }
-        running = true; 
-        correctNoteCounter = 0; 
-        initVisual(); 
-        drawNote(); 
-        update();
-        document.getElementById("feedback").innerText = "À vous...";
-        document.getElementById("feedback").style.color = "#555";
-    } catch (err) { 
-        document.getElementById("feedback").innerText = "Erreur micro : " + err.message; 
-        document.getElementById("feedback").style.color = "#dc3545";
-    }
+        if (!audioContext) await setupAudio();
+        if (audioContext.state === 'suspended') await audioContext.resume();
+        running = true; correctNoteCounter = 0; initVisual(); drawNote(); update();
+        document.getElementById("feedback").innerText = "C'est parti !";
+    } catch (err) { document.getElementById("feedback").innerText = "Erreur micro : " + err.message; }
 };
 
-window.stop = function() { 
-    running = false; 
-    correctNoteCounter = 0; 
-    if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-    }
-    document.getElementById("feedback").innerText = "Arrêté."; 
-    document.getElementById("feedback").style.color = "#555";
-};
-
+window.stop = function() { running = false; correctNoteCounter = 0; document.getElementById("feedback").innerText = "Arrêté."; };
 initVisual();
 </script>
 </body>

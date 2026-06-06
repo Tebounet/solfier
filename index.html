@@ -17,9 +17,9 @@
         .param { display: flex; flex-direction: column; font-size: 12px; font-weight: bold; }
         select, input { padding: 5px; border-radius: 4px; border: 1px solid #ccc; }
 
-        /* Style du Mini-Clavier */
+        /* Style du Mini-Clavier sans texte inutile */
         #keyboard { display: flex; justify-content: center; background: #333; padding: 10px; border-radius: 8px; margin-top: 20px; position: relative; user-select: none; }
-        .key { position: relative; width: 34px; height: 120px; background: white; border: 1px solid #ccc; border-radius: 0 0 4px 4px; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; font-size: 10px; font-weight: bold; color: #888; padding-bottom: 5px; box-sizing: border-box; }
+        .key { position: relative; width: 34px; height: 120px; background: white; border: 1px solid #ccc; border-radius: 0 0 4px 4px; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; font-size: 10px; font-weight: bold; color: #888; padding-bottom: 8px; box-sizing: border-box; }
         .key:active { background: #e0e0e0; }
         .key.black { position: absolute; width: 22px; height: 75px; background: black; border: none; border-radius: 0 0 3px 3px; color: white; z-index: 2; transform: translateX(-50%); padding-bottom: 2px; }
         .key.black:active { background: #444; }
@@ -37,9 +37,6 @@
 			<option value="alto">Alto</option>
 			<option value="tenor">Ténor</option>
             <option value="bass">Basse</option>
-            >
-            <
-            >
         </select>
     </div>
     <div class="param">
@@ -70,19 +67,19 @@
 <div id="container"></div>
 
 <div id="keyboard">
-    <div class="key" onclick="playNote(261.63)">Do</div>
-    <div class="key black" style="left: 39px;" onclick="playNote(277.18)">Do#</div>
-    <div class="key" onclick="playNote(293.66)">Ré</div>
-    <div class="key black" style="left: 73px;" onclick="playNote(311.13)">Ré#</div>
-    <div class="key" onclick="playNote(329.63)">Mi</div>
-    <div class="key" onclick="playNote(349.23)">Fa</div>
-    <div class="key black" style="left: 141px;" onclick="playNote(369.99)">Fa#</div>
-    <div class="key" onclick="playNote(392.00)">Sol</div>
-    <div class="key black" style="left: 175px;" onclick="playNote(415.30)">Sol#</div>
-    <div class="key" onclick="playNote(440.00)">La (La440)</div>
-    <div class="key black" style="left: 209px;" onclick="playNote(466.16)">La#</div>
-    <div class="key" onclick="playNote(493.88)">Si</div>
-    <div class="key" onclick="playNote(523.25)">Do</div>
+    <div class="key" onmousedown="playNote(261.63)" ontouchstart="playNote(261.63)"></div>
+    <div class="key black" style="left: 39px;" onmousedown="playNote(277.18)" ontouchstart="playNote(277.18)"></div>
+    <div class="key" onmousedown="playNote(293.66)" ontouchstart="playNote(293.66)"></div>
+    <div class="key black" style="left: 73px;" onmousedown="playNote(311.13)" ontouchstart="playNote(311.13)"></div>
+    <div class="key" onmousedown="playNote(329.63)" ontouchstart="playNote(329.63)"></div>
+    <div class="key" onmousedown="playNote(349.23)" ontouchstart="playNote(349.23)"></div>
+    <div class="key black" style="left: 141px;" onmousedown="playNote(369.99)" ontouchstart="playNote(369.99)"></div>
+    <div class="key" onmousedown="playNote(392.00)" ontouchstart="playNote(392.00)"></div>
+    <div class="key black" style="left: 175px;" onmousedown="playNote(415.30)" ontouchstart="playNote(415.30)"></div>
+    <div class="key" onmousedown="playNote(440.00)" ontouchstart="playNote(440.00)">La440</div>
+    <div class="key black" style="left: 209px;" onmousedown="playNote(466.16)" ontouchstart="playNote(466.16)"></div>
+    <div class="key" onmousedown="playNote(493.88)" ontouchstart="playNote(493.88)"></div>
+    <div class="key" onmousedown="playNote(523.25)" ontouchstart="playNote(523.25)"></div>
 </div>
 
 <script>
@@ -99,7 +96,6 @@ const REQUIRED_STABLE_FRAMES = 25;
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const scale = ["c/1","d/1","e/1","f/1","g/1","a/1","b/1","c/2","d/2","e/2","f/2","g/2","a/2","b/2","c/3","d/3","e/3","f/3","g/3","a/3","b/3","c/4","d/4","e/4","f/4","g/4","a/4","b/4","c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"];
 
-// Ténor recalibré une octave au-dessus (min: c/4, max: c/6, median: b/4)
 const VOICE_RANGES = {
     bass:    { clef: "bass",    min: "e/2", max: "e/4", median: "d/3" }, 
     tenor:   { clef: "treble",  min: "c/4", max: "c/6", median: "b/4" }, 
@@ -173,7 +169,7 @@ async function setupAudio() {
         localStream.getTracks().forEach(track => track.stop());
     }
     if (audioContext) {
-        await audioContext.close();
+        try { await audioContext.close(); } catch(e) {}
     }
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -184,12 +180,12 @@ async function setupAudio() {
     microphone.connect(analyser);
 }
 
-function playNote(frequency) {
+window.playNote = async function(frequency) {
     if (!audioContext || audioContext.state === 'closed') {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
     if (audioContext.state === 'suspended') {
-        audioContext.resume();
+        await audioContext.resume();
     }
 
     const osc = audioContext.createOscillator();

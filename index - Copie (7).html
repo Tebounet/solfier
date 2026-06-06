@@ -17,11 +17,11 @@
         .param { display: flex; flex-direction: column; font-size: 12px; font-weight: bold; }
         select, input { padding: 5px; border-radius: 4px; border: 1px solid #ccc; }
 
-        /* Style du Mini-Clavier Élargi */
+        /* Style du Mini-Clavier sans texte inutile */
         #keyboard { display: flex; justify-content: center; background: #333; padding: 10px; border-radius: 8px; margin-top: 20px; position: relative; user-select: none; }
-        .key { position: relative; width: 46px; height: 120px; background: white; border: 1px solid #ccc; border-radius: 0 0 4px 4px; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; font-size: 11px; font-weight: bold; color: #888; padding-bottom: 8px; box-sizing: border-box; }
+        .key { position: relative; width: 34px; height: 120px; background: white; border: 1px solid #ccc; border-radius: 0 0 4px 4px; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; font-size: 10px; font-weight: bold; color: #888; padding-bottom: 8px; box-sizing: border-box; }
         .key:active { background: #e0e0e0; }
-        .key.black { position: absolute; width: 30px; height: 75px; background: black; border: none; border-radius: 0 0 3px 3px; color: white; z-index: 2; transform: translateX(-50%); padding-bottom: 2px; }
+        .key.black { position: absolute; width: 22px; height: 75px; background: black; border: none; border-radius: 0 0 3px 3px; color: white; z-index: 2; transform: translateX(-50%); padding-bottom: 2px; }
         .key.black:active { background: #444; }
     </style>
 	<link rel="manifest" href="manifest.json">
@@ -68,16 +68,16 @@
 
 <div id="keyboard">
     <div class="key" onmousedown="playNote(261.63)" ontouchstart="playNote(261.63)"></div>
-    <div class="key black" style="left: 56px;" onmousedown="playNote(277.18)" ontouchstart="playNote(277.18)"></div>
+    <div class="key black" style="left: 39px;" onmousedown="playNote(277.18)" ontouchstart="playNote(277.18)"></div>
     <div class="key" onmousedown="playNote(293.66)" ontouchstart="playNote(293.66)"></div>
-    <div class="key black" style="left: 102px;" onmousedown="playNote(311.13)" ontouchstart="playNote(311.13)"></div>
+    <div class="key black" style="left: 73px;" onmousedown="playNote(311.13)" ontouchstart="playNote(311.13)"></div>
     <div class="key" onmousedown="playNote(329.63)" ontouchstart="playNote(329.63)"></div>
     <div class="key" onmousedown="playNote(349.23)" ontouchstart="playNote(349.23)"></div>
-    <div class="key black" style="left: 194px;" onmousedown="playNote(369.99)" ontouchstart="playNote(369.99)"></div>
+    <div class="key black" style="left: 141px;" onmousedown="playNote(369.99)" ontouchstart="playNote(369.99)"></div>
     <div class="key" onmousedown="playNote(392.00)" ontouchstart="playNote(392.00)"></div>
-    <div class="key black" style="left: 240px;" onmousedown="playNote(415.30)" ontouchstart="playNote(415.30)"></div>
+    <div class="key black" style="left: 175px;" onmousedown="playNote(415.30)" ontouchstart="playNote(415.30)"></div>
     <div class="key" onmousedown="playNote(440.00)" ontouchstart="playNote(440.00)">La440</div>
-    <div class="key black" style="left: 286px;" onmousedown="playNote(466.16)" ontouchstart="playNote(466.16)"></div>
+    <div class="key black" style="left: 209px;" onmousedown="playNote(466.16)" ontouchstart="playNote(466.16)"></div>
     <div class="key" onmousedown="playNote(493.88)" ontouchstart="playNote(493.88)"></div>
     <div class="key" onmousedown="playNote(523.25)" ontouchstart="playNote(523.25)"></div>
 </div>
@@ -194,16 +194,14 @@ window.playNote = async function(frequency) {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(frequency, audioContext.currentTime);
     
-    // Durée totale de résonance étendue à 2.5 secondes avec extinction progressive
-    const duration = 2.5;
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + duration);
+    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 1.2);
     
     osc.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
     osc.start();
-    osc.stop(audioContext.currentTime + duration);
+    osc.stop(audioContext.currentTime + 1.2);
 }
 
 function autoCorrelate(buf, sampleRate) {

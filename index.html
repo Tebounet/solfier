@@ -91,7 +91,8 @@ let currentTargetNote = "";
 let realPitchTarget = "";
 
 let correctNoteCounter = 0;
-const REQUIRED_STABLE_FRAMES = 25; 
+// Réduction d'un tiers du temps de tenue requis (de 25 à 17 frames)
+const REQUIRED_STABLE_FRAMES = 17; 
 
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const scale = ["c/1","d/1","e/1","f/1","g/1","a/1","b/1","c/2","d/2","e/2","f/2","g/2","a/2","b/2","c/3","d/3","e/3","f/3","g/3","a/3","b/3","c/4","d/4","e/4","f/4","g/4","a/4","b/4","c/5","d/5","e/5","f/5","g/5","a/5","b/5","c/6","d/6","e/6","f/6","g/6","a/6","b/6","c/7"];
@@ -194,7 +195,6 @@ window.playNote = async function(frequency) {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(frequency, audioContext.currentTime);
     
-    // Durée totale de résonance étendue à 2.5 secondes avec extinction progressive
     const duration = 2.5;
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + duration);

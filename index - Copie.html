@@ -91,6 +91,7 @@ let currentTargetNote = "";
 let realPitchTarget = "";
 
 let correctNoteCounter = 0;
+// Réduction d'un tiers du temps de tenue requis (de 25 à 17 frames)
 const REQUIRED_STABLE_FRAMES = 17; 
 
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -103,24 +104,19 @@ const VOICE_RANGES = {
     soprano: { clef: "treble",  min: "c/4", max: "c/6", median: "b/4" }  
 };
 
-// Traduction française adaptée au contexte enharmonique (Dièses ou Bémols)
 const toFrench = {
-    "C": "Do", "C#": "Do#", "Db": "Réb",
-    "D": "Ré", "D#": "Ré#", "Eb": "Mib",
+    "C": "Do", "C#": "Do#", "Db": "Do#",
+    "D": "Ré", "D#": "Ré#", "Eb": "Ré#",
     "E": "Mi",
-    "F": "Fa", "F#": "Fa#", "Gb": "Solb",
-    "G": "Sol", "G#": "Sol#", "Ab": "Lab",
-    "A": "La", "A#": "La#", "Bb": "Sib",
+    "F": "Fa", "F#": "Fa#", "Gb": "Fa#",
+    "G": "Sol", "G#": "Sol#", "Ab": "Sol#",
+    "A": "La", "A#": "La#", "Bb": "La#",
     "B": "Si"
 };
 
-// Application rigoureuse de l'armure sur les notes de la portée
 const KEY_ALTERATIONS = {
-    "C": {}, 
-    "G": { "F": "F#" }, 
-    "D": { "F": "F#", "C": "C#" },
-    "F": { "B": "Bb" }, 
-    "Bb": { "B": "Bb", "E": "Eb" }
+    "C": {}, "G": { "F": "F#" }, "D": { "F": "F#", "C": "C#" },
+    "F": { "B": "A#" }, "Bb": { "B": "A#", "E": "D#" }
 };
 
 function initVisual() {
@@ -159,8 +155,6 @@ function drawNote() {
     currentTargetNote = scale[randomIdx];
 
     const noteLetter = currentTargetNote.split("/")[0].toUpperCase();
-    
-    // Modification majeure : Assigne la note altérée attendue selon l'armure choisie
     realPitchTarget = KEY_ALTERATIONS[tonality][noteLetter] || noteLetter;
 
     const note = new VF.StaveNote({ clef: config.clef, keys: [currentTargetNote], duration: "q" });
@@ -239,19 +233,12 @@ function update() {
         if (pitch !== -1) {
             const midi = 12 * Math.log2(pitch / 440) + 69;
             const noteNameEN = NOTE_NAMES[Math.round(midi) % 12];
+            const targetNormEN = realPitchTarget.replace("b", "#");
             
-            // Harmonisation des équivalences enharmoniques (ex: A# équivaut à Bb)
-            const targetNormEN = realPitchTarget.replace("b", "#").replace("E#", "F");
-            const currentNormEN = noteNameEN.replace("b", "#");
-            
-            // Traduction respectant le contexte (Dièse ou Bémol d'origine)
-            let noteNameFR = toFrench[noteNameEN] || noteNameEN;
-            if (realPitchTarget.includes("b") && noteNameEN === "A#") noteNameFR = "Sib";
-            if (realPitchTarget.includes("b") && noteNameEN === "D#") noteNameFR = "Mib";
-            
+            const noteNameFR = toFrench[noteNameEN] || noteNameEN;
             const targetNormFR = toFrench[realPitchTarget] || realPitchTarget;
 
-            const isCorrect = (currentNormEN === targetNormEN);
+            const isCorrect = (noteNameEN === targetNormEN || (noteNameEN === "A#" && targetNormEN === "Bb"));
 
             if (isCorrect) {
                 correctNoteCounter++;

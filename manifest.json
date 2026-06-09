@@ -3,10 +3,14 @@
   "short_name": "Solfier",
   "description": "Pour apprendre et s'exercer au solfège.",
   "start_url": "index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "orientation": "landscape",
+  "lang": "fr-FR",
+  "dir": "ltr",
+  "categories": ["education", "music"],
   "icons": [
     {
       "src": "icon-192.png",

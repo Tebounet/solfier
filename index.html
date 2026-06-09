@@ -314,13 +314,14 @@ window.stop = function() {
 };
 
 // Enregistrement du Service Worker pour la PWA
-if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-            .then(reg => console.log('Service Worker enregistré avec succès !', reg.scope))
-            .catch(err => console.error('Échec de l\'enregistrement du Service Worker :', err));
+      // On cible explicitement le sous-dossier de GitHub Pages
+      navigator.serviceWorker.register('/solfier/service-worker.js', { scope: '/solfier/' })
+        .then(reg => console.log('Service Worker enregistré avec succès ! Scope :', reg.scope))
+        .catch(err => console.warn('Échec de l\'enregistrement :', err));
     });
-}
+  }
 
 initVisual();
 </script>

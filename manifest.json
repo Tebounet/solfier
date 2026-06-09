@@ -1,6 +1,7 @@
 {
   "name": "Solfier",
   "short_name": "Solfier",
+  "description": "Pour apprendre et s'exercer au solfège.",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
